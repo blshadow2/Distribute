@@ -36,16 +36,17 @@ public class LawyerController {
                        @RequestParam(value = "caseId", required = false) String caseId,
                        HttpSession session, Model model) {
 
-        // 사건을 선택하면 그 사건에 저장된 키워드를 검색어로 사용한다.
+        LoginMember m = (LoginMember) session.getAttribute(SessionConst.LOGIN_MEMBER);
+
+        // 사건을 선택하면 그 사건에 저장된 키워드를 검색어로 사용한다. (본인 사건만)
         String effectiveKeyword = keyword;
         if (caseId != null && !caseId.isBlank()) {
-            CaseDto c = caseService.get(caseId);
+            CaseDto c = caseService.getForUser(caseId, m.getMemberId(), m.getViewRole());
             if (c != null && c.getKeywords() != null && !c.getKeywords().isEmpty()) {
                 effectiveKeyword = String.join(" ", c.getKeywords());
             }
         }
 
-        LoginMember m = (LoginMember) session.getAttribute(SessionConst.LOGIN_MEMBER);
         model.addAttribute("lawyers", lawyerService.search(effectiveKeyword, region, specialty));
         model.addAttribute("keyword", effectiveKeyword);
         model.addAttribute("region", region);

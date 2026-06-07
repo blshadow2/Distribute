@@ -40,7 +40,11 @@ public class CaseApiController {
     }
 
     @GetMapping("/{id}")
-    public CaseDto one(@PathVariable("id") String id) {
-        return caseService.get(id);
+    public CaseDto one(@PathVariable("id") String id, HttpSession session) {
+        LoginMember m = (LoginMember) session.getAttribute(SessionConst.LOGIN_MEMBER);
+        if (m == null) {
+            throw new lawSystem.web.auth.AccessDeniedException("로그인이 필요합니다.");
+        }
+        return caseService.getForUser(id, m.getMemberId(), m.getViewRole());
     }
 }

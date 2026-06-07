@@ -62,21 +62,25 @@ public class CaseController {
         return "redirect:/cases";
     }
 
-    /** 사건 상세: 사건 정보 + 증거 목록 + AI 분석 결과 이력. */
+    /** 사건 상세: 사건 정보 + 증거 목록 + AI 분석 결과 이력. (본인 사건만) */
     @GetMapping("/cases/{id}")
-    public String detail(@PathVariable("id") String id, Model model) {
-        model.addAttribute("aCase", caseService.get(id));
+    public String detail(@PathVariable("id") String id, HttpSession session, Model model) {
+        LoginMember m = (LoginMember) session.getAttribute(SessionConst.LOGIN_MEMBER);
+        model.addAttribute("aCase", caseService.getForUser(id, m.getMemberId(), m.getViewRole()));
         model.addAttribute("evidences", caseService.listEvidence(id));
         model.addAttribute("aiResults", caseService.listAiResults(id));
         return "case-detail";
     }
 
-    /** 증거자료 업로드. */
+    /** 증거자료 업로드. (본인 사건만) */
     @PostMapping("/cases/{id}/evidence")
     public String uploadEvidence(@PathVariable("id") String id,
                                  @RequestParam("file") MultipartFile file,
-                                 @RequestParam(value = "description", required = false) String description)
+                                 @RequestParam(value = "description", required = false) String description,
+                                 HttpSession session)
             throws IOException {
+        LoginMember m = (LoginMember) session.getAttribute(SessionConst.LOGIN_MEMBER);
+        caseService.checkAccess(id, m.getMemberId(), m.getViewRole());
         if (file != null && !file.isEmpty()) {
             String original = StringUtils.cleanPath(
                     file.getOriginalFilename() != null ? file.getOriginalFilename() : "upload");

@@ -12,6 +12,7 @@ import lawSystem.jpa.entity.LegalCase;
 import lawSystem.jpa.entity.Member;
 import lawSystem.legalCase.CaseCategory;
 import lawSystem.legalCase.CaseStatus;
+import lawSystem.web.auth.AccessDeniedException;
 import lawSystem.web.dto.AiResultResponse;
 import lawSystem.web.dto.CaseDto;
 import lawSystem.web.dto.CaseForm;
@@ -67,15 +68,54 @@ public class CaseService {
 
     @Transactional(readOnly = true)
     public List<CaseDto> listForUser(String memberId, String viewRole) {
-        List<LegalCase> cases = "CLIENT".equals(viewRole)
-                ? caseRepository.findByClient_MemberIdOrderByCreatedAtDesc(memberId)
-                : caseRepository.findAll();
+        List<LegalCase> cases;
+        if ("CLIENT".equals(viewRole)) {
+            cases = caseRepository.findByClient_MemberIdOrderByCreatedAtDesc(memberId);
+        } else if ("PARTNER".equals(viewRole) || "ASSOCIATE".equals(viewRole)) {
+            cases = caseRepository.findByAssignedLawyer_MemberIdOrderByCreatedAtDesc(memberId);
+        } else {
+            // 사무직원 등 행정 역할: 전체 열람
+            cases = caseRepository.findAll();
+        }
         return cases.stream().map(this::toDto).toList();
     }
 
+    /** 소유권을 확인하고 사건을 반환한다. 권한이 없으면 AccessDeniedException. */
     @Transactional(readOnly = true)
-    public CaseDto get(String caseId) {
-        return caseRepository.findById(caseId).map(this::toDto).orElse(null);
+    public CaseDto getForUser(String caseId, String memberId, String viewRole) {
+        return toDto(requireAccess(caseId, memberId, viewRole));
+    }
+
+    /** 소유권만 확인한다(쓰기 작업 전 가드). 권한이 없으면 AccessDeniedException. */
+    @Transactional(readOnly = true)
+    public void checkAccess(String caseId, String memberId, String viewRole) {
+        requireAccess(caseId, memberId, viewRole);
+    }
+
+    private LegalCase requireAccess(String caseId, String memberId, String viewRole) {
+        LegalCase c = caseRepository.findById(caseId)
+                .orElseThrow(() -> new AccessDeniedException("사건을 찾을 수 없습니다."));
+        if (!canAccess(c, memberId, viewRole)) {
+            throw new AccessDeniedException("이 사건에 접근할 권한이 없습니다.");
+        }
+        return c;
+    }
+
+    /** 역할별 소유권 규칙: 의뢰인=본인 사건, 변호사=배당 사건, 사무직원=전체. */
+    private boolean canAccess(LegalCase c, String memberId, String viewRole) {
+        if (memberId == null) {
+            return false;
+        }
+        if ("STAFF".equals(viewRole)) {
+            return true;
+        }
+        if ("CLIENT".equals(viewRole)) {
+            return c.getClient() != null && memberId.equals(c.getClient().getMemberId());
+        }
+        if ("PARTNER".equals(viewRole) || "ASSOCIATE".equals(viewRole)) {
+            return c.getAssignedLawyer() != null && memberId.equals(c.getAssignedLawyer().getMemberId());
+        }
+        return false;
     }
 
     /** 변호사 담당(배당된) 사건 목록. */

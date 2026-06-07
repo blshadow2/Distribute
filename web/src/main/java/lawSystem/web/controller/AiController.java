@@ -11,6 +11,7 @@ import java.util.List;
 
 import jakarta.servlet.http.HttpSession;
 
+import lawSystem.web.auth.AccessDeniedException;
 import lawSystem.web.auth.LoginMember;
 import lawSystem.web.auth.RoleAllowed;
 import lawSystem.web.auth.SessionConst;
@@ -47,7 +48,8 @@ public class AiController {
 
     @RoleAllowed({"ASSOCIATE", "PARTNER"})   // 의뢰인 차단 — 변호사 전용
     @PostMapping("/summary")
-    public SummaryResponse summarize(@RequestBody SummaryRequest request) {
+    public SummaryResponse summarize(@RequestBody SummaryRequest request, HttpSession session) {
+        authorizeCase(request.getCaseId(), session);
         return aiWebService.summarize(request.getText(), request.getCaseId());
     }
 
@@ -69,6 +71,8 @@ public class AiController {
         if (keywords == null || keywords.isEmpty()) {
             return new KeywordsResponse(List.of());
         }
+        // 소유권 확인: 남의 사건에 키워드를 덮어쓰지 못하게 막는다.
+        authorizeCase(request.getCaseId(), session);
         // ① 사건 키워드 필드 저장 (사건이 지정된 경우)
         if (request.getCaseId() != null && !request.getCaseId().isBlank()) {
             caseService.saveKeywords(request.getCaseId(), keywords);
@@ -84,17 +88,31 @@ public class AiController {
 
     @RoleAllowed({"ASSOCIATE", "PARTNER"})   // 의뢰인 차단 — 변호사 전용
     @PostMapping("/similar-precedents")
-    public List<PrecedentDto> similarPrecedents(@RequestBody AiRequest request) {
+    public List<PrecedentDto> similarPrecedents(@RequestBody AiRequest request, HttpSession session) {
+        authorizeCase(request.getCaseId(), session);
         return aiWebService.similarPrecedents(request.getText(), request.getCaseId());
     }
 
     @PostMapping("/legal-rules")
-    public LegalRulesResponse legalRules(@RequestBody AiRequest request) {
+    public LegalRulesResponse legalRules(@RequestBody AiRequest request, HttpSession session) {
+        authorizeCase(request.getCaseId(), session);
         return aiWebService.analyzeLegalRules(request.getText(), request.getCaseId(), request.getTopK());
     }
 
     @GetMapping("/results/{id}")
     public AiResultResponse getResult(@PathVariable("id") String id) {
         return aiWebService.getResult(id);
+    }
+
+    /** caseId 가 지정된 경우, 로그인 사용자가 그 사건에 접근 권한이 있는지 확인한다. */
+    private void authorizeCase(String caseId, HttpSession session) {
+        if (caseId == null || caseId.isBlank()) {
+            return;
+        }
+        LoginMember m = (LoginMember) session.getAttribute(SessionConst.LOGIN_MEMBER);
+        if (m == null) {
+            throw new AccessDeniedException("로그인이 필요합니다.");
+        }
+        caseService.checkAccess(caseId, m.getMemberId(), m.getViewRole());
     }
 }
