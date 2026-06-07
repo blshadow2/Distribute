@@ -2,6 +2,7 @@ package lawSystem.precedent;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import java.net.URI;
@@ -147,6 +148,44 @@ public class PrecedentRagClient {
                 toStringList(root.get("related_statutes")),
                 toStringList(root.get("cited_cases"))
         );
+    }
+
+    /**
+     * 의미 기반 재정렬. POST /embed/rerank
+     *
+     * query 와 각 문서(text)의 코사인 유사도를 계산해 식별자→점수 맵으로 반환한다.
+     * (변호사 검색에서 키워드 ↔ 변호사 프로필 유사도 정렬에 사용)
+     *
+     * @param query    기준 쿼리(사건 키워드 등)
+     * @param idToText 후보 식별자 → 프로필/본문 텍스트
+     * @return 식별자 → 유사도 점수 (점수 내림차순). 호출 실패는 RuntimeException.
+     */
+    public java.util.LinkedHashMap<String, Double> rerank(String query, java.util.Map<String, String> idToText) {
+        java.util.LinkedHashMap<String, Double> scores = new java.util.LinkedHashMap<>();
+        if (idToText == null || idToText.isEmpty()) {
+            return scores;
+        }
+        ObjectNode body = mapper.createObjectNode();
+        body.put("query", query == null ? "" : query);
+        ArrayNode docs = body.putArray("documents");
+        for (java.util.Map.Entry<String, String> e : idToText.entrySet()) {
+            ObjectNode doc = docs.addObject();
+            doc.put("id", e.getKey());
+            doc.put("text", e.getValue() == null ? "" : e.getValue());
+        }
+        body.put("top_k", idToText.size());
+
+        JsonNode root = post("/embed/rerank", body, 30);
+        JsonNode results = root.get("results");
+        if (results != null && results.isArray()) {
+            for (JsonNode r : results) {
+                String id = textOrNull(r, "id");
+                if (id != null) {
+                    scores.put(id, r.has("score") ? r.get("score").asDouble() : 0.0);
+                }
+            }
+        }
+        return scores;
     }
 
     /** 공통 POST 헬퍼: JSON 본문 전송 후 응답 루트 노드를 반환한다. */

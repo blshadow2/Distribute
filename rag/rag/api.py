@@ -91,6 +91,28 @@ class AnalyzeRulesResponse(BaseModel):
     cited_cases: List[str] = Field(default_factory=list)
 
 
+# --- 범용 의미 재정렬 (변호사 검색 등): 식별자+점수만 반환 ---
+
+class RerankDoc(BaseModel):
+    id: str
+    text: str = ""
+
+
+class RerankRequest(BaseModel):
+    query: str = Field(..., description="기준 쿼리(예: 사건 키워드)")
+    documents: List[RerankDoc] = Field(default_factory=list)
+    top_k: int = Field(50, ge=1, le=500)
+
+
+class RerankHit(BaseModel):
+    id: str
+    score: float
+
+
+class RerankResponse(BaseModel):
+    results: List[RerankHit] = Field(default_factory=list)
+
+
 def _normalize_scores(cases: list) -> None:
     if not cases:
         return
@@ -174,3 +196,19 @@ def rag_analyze_rules(payload: AnalyzeRulesRequest) -> AnalyzeRulesResponse:
     from .tasks import legal_rules as task
     service = get_service()
     return AnalyzeRulesResponse(**task.analyze_rules(service.retriever, payload.query, payload.top_k))
+
+
+@app.post("/embed/rerank", response_model=RerankResponse)
+def embed_rerank(payload: RerankRequest) -> RerankResponse:
+    """쿼리와 문서들의 의미 유사도(BGE-M3 코사인)를 계산해 정렬 결과를 반환한다.
+    변호사 검색에서 키워드 ↔ 변호사 프로필 유사도 정렬에 사용한다."""
+    if not payload.query.strip() or not payload.documents:
+        return RerankResponse(results=[])
+    service = get_service()
+    docs = [{"id": d.id, "text": d.text} for d in payload.documents]
+    scored = service.retriever.rerank(payload.query, docs)
+    results = [
+        RerankHit(id=s["id"], score=round(s["score"], 6))
+        for s in scored[: payload.top_k]
+    ]
+    return RerankResponse(results=results)

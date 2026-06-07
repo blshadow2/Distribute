@@ -149,3 +149,33 @@ class Retriever:
 
         cases = sorted(grouped.values(), key=lambda c: c["score"], reverse=True)
         return cases[:top_cases]
+
+    def rerank(
+        self, query: str, documents: List[Dict[str, str]]
+    ) -> List[Dict[str, Any]]:
+        """query 와 각 document(text)의 의미 유사도(코사인)를 계산해 내림차순 정렬해 반환.
+
+        판례 인덱스(Chroma)와 무관하게, 호출 측이 보낸 임의의 문서를 즉석에서 임베딩한다.
+        정규화 임베딩이므로 내적(dot)이 곧 코사인 유사도이다.
+
+        documents: [{"id": <식별자>, "text": <프로필/본문>}]
+        return:    [{"id": <식별자>, "score": <float>}]  (점수 내림차순)
+        """
+        if not query or not query.strip() or not documents:
+            return []
+
+        ids = [d.get("id") for d in documents]
+        texts = [(d.get("text") or "") for d in documents]
+
+        embeddings = self.model.encode(
+            [query] + texts, normalize_embeddings=True, convert_to_numpy=True
+        )
+        query_vec = embeddings[0]
+        doc_vecs = embeddings[1:]
+
+        scored: List[Dict[str, Any]] = [
+            {"id": cid, "score": float((query_vec * vec).sum())}
+            for cid, vec in zip(ids, doc_vecs)
+        ]
+        scored.sort(key=lambda x: x["score"], reverse=True)
+        return scored
