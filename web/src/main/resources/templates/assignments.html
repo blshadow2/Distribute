@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="ko">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>사건 배당 · AI 법률 사무 플랫폼</title>
+    <link rel="stylesheet" href="/css/cohere.css"/>
+</head>
+<body>
+<nav th:replace="~{fragments/nav :: topnav}"></nav>
+
+<div class="container section">
+    <span class="mono-label">PARTNER · ASSIGNMENT</span>
+    <h1 class="display display-md" style="margin:8px 0 4px;">사건 배당</h1>
+    <p class="muted small" style="margin-bottom:20px;">
+        수임(RETAINED) 사건을 변호사에게 배당합니다. 드롭다운은 <b>업무량이 적은 변호사부터</b> 표시되며,
+        배당 시 담당 변호사의 업무량이 자동으로 조정됩니다.
+    </p>
+
+    <div class="card" th:if="${#lists.isEmpty(cases)}">
+        <p class="muted" style="margin:0;">배당할 수임 사건이 없습니다. (수임 확정된 사건이 여기에 표시됩니다.)</p>
+    </div>
+
+    <div th:each="c : ${cases}" class="card" style="margin-bottom:12px;">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+            <span class="card-title" style="margin:0;" th:text="${c.title}">사건</span>
+            <span class="badge" th:text="${c.category}">분야</span>
+            <span class="badge" th:text="${c.status}">상태</span>
+        </div>
+        <div class="small muted" style="margin-top:4px;">
+            의뢰인 <span th:text="${c.clientName}">의뢰인</span> ·
+            현재 담당
+            <b th:if="${c.assignedLawyerName != null}" th:text="${c.assignedLawyerName}">담당</b>
+            <span th:unless="${c.assignedLawyerName != null}">미배당</span>
+        </div>
+
+        <form th:action="@{/assign/{id}(id=${c.caseId})}" method="post"
+              style="margin-top:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+            <select name="lawyerId" required
+                    style="padding:8px 10px;border:1px solid #d9d9dd;border-radius:10px;min-width:260px;background:#fff;">
+                <option value="">— 배당할 변호사 선택 —</option>
+                <option th:each="l : ${lawyers}"
+                        th:value="${l.lawyerId}"
+                        th:selected="${c.assignedLawyerId != null and c.assignedLawyerId == l.lawyerId}"
+                        th:text="${l.name + ' · ' + l.type + ' (업무량 ' + l.currentWorkload + ')'}">변호사</option>
+            </select>
+            <button class="btn btn-primary" type="submit">배당</button>
+        </form>
+    </div>
+</div>
+</body>
+</html>
