@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="ko">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>담당 사건 · AI 법률 사무 플랫폼</title>
+    <link rel="stylesheet" href="/css/cohere.css"/>
+</head>
+<body>
+<nav th:replace="~{fragments/nav :: topnav}"></nav>
+
+<div class="container section">
+    <span class="mono-label">MY CASES</span>
+    <h1 class="display display-md" style="margin:8px 0 20px;">담당 사건</h1>
+
+    <div class="card" th:if="${#lists.isEmpty(cases)}">
+        <p class="muted" style="margin:0;">배당된 사건이 없습니다.</p>
+    </div>
+
+    <div th:each="c : ${cases}" class="card" style="margin-bottom:12px;">
+        <div style="display:flex;align-items:center;gap:8px;">
+            <span class="card-title" style="margin:0;" th:text="${c.title}">사건</span>
+            <span class="badge" th:text="${c.category}">분야</span>
+            <span class="badge" th:text="${c.status}">상태</span>
+        </div>
+        <div style="margin:8px 0;" th:if="${c.keywords != null and !#lists.isEmpty(c.keywords)}">
+            <span class="tag" th:each="k : ${c.keywords}" th:text="${k}">키워드</span>
+        </div>
+        <p class="small muted" style="margin:8px 0 0;white-space:pre-wrap;"
+           th:text="${#strings.abbreviate(c.factDescription, 300)}">사실관계</p>
+    </div>
+
+    <p class="small muted" style="margin-top:16px;">
+        AI 도구에서 이 사건들을 선택해 <b>요약·유사판례·법리</b> 분석을 실행할 수 있습니다.
+    </p>
+</div>
+</body>
+</html>

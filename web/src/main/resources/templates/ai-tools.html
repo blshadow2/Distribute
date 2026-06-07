@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="ko">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>AI 도구 · AI 법률 사무 플랫폼</title>
+    <link rel="stylesheet" href="/css/cohere.css"/>
+</head>
+<body th:with="role=${session.loginMember != null ? session.loginMember.viewRole : ''}">
+
+<nav th:replace="~{fragments/nav :: topnav}"></nav>
+
+<main class="container" style="display:flex;flex-direction:column;gap:24px;padding-top:32px;padding-bottom:32px;">
+    <section class="input-card">
+        <h2>사건 내용 입력</h2>
+
+        <label class="field" for="caseSelect">등록한 사건 선택 (선택하면 사실관계가 자동 입력됩니다)</label>
+        <select id="caseSelect" style="margin-bottom:12px;">
+            <option value="">— 직접 입력 —</option>
+        </select>
+
+        <textarea id="caseText" rows="7"
+                  placeholder="사건의 사실관계 / 분석할 내용을 입력하세요.&#10;예) 피고는 정보주체의 동의 없이 공개된 개인정보를 수집하여 제3자에게 제공하였다..."></textarea>
+
+        <div class="options">
+            <label>사건 ID(선택)
+                <input type="text" id="caseId" placeholder="legal_case 의 case_id (선택)"/>
+            </label>
+            <label>top_k
+                <input type="number" id="topK" value="5" min="1" max="20"/>
+            </label>
+            <label>키워드 수
+                <input type="number" id="maxKeywords" value="5" min="1" max="20"/>
+            </label>
+        </div>
+
+        <div class="actions">
+            <!-- 변호사(소속/대표) 전용: 내용 요약 · 유사 판례 -->
+            <button data-action="summary"
+                    th:if="${role == 'ASSOCIATE' or role == 'PARTNER'}">📝 내용 요약</button>
+            <!-- 모든 로그인 사용자(의뢰인 포함): 키워드 · 법리 -->
+            <button data-action="keywords">🏷️ 키워드 추출</button>
+            <button data-action="precedents"
+                    th:if="${role == 'ASSOCIATE' or role == 'PARTNER'}">📚 유사 판례</button>
+            <button data-action="legal">⚖️ 법리 설명</button>
+        </div>
+
+        <p class="small muted" th:if="${role == 'CLIENT'}" style="margin-top:12px;">
+            ※ 사건 요약·유사 판례 정리는 담당 변호사 기능입니다. 의뢰인은 키워드 추출과 법리 설명을 이용할 수 있습니다.
+        </p>
+    </section>
+
+    <section class="result-card">
+        <h2>분석 결과 <span id="status" class="status"></span></h2>
+        <div id="result" class="result"><p class="placeholder">버튼을 눌러 AI 분석을 실행하세요.</p></div>
+    </section>
+</main>
+
+<div class="footer">SPRING BOOT · PYTHON RAG(:8000) · OLLAMA</div>
+
+<script src="/app.js"></script>
+<script>
+// 등록한 사건 목록을 불러와 드롭다운 구성 → 선택 시 사실관계/사건ID 자동 채움
+(function () {
+    const sel = document.getElementById("caseSelect");
+    const caseText = document.getElementById("caseText");
+    const caseId = document.getElementById("caseId");
+
+    fetch("/api/cases/mine")
+        .then(r => r.ok ? r.json() : [])
+        .then(list => {
+            (list || []).forEach(c => {
+                const o = document.createElement("option");
+                o.value = c.caseId;
+                o.textContent = (c.title || c.caseId) + (c.status ? " · " + c.status : "");
+                sel.appendChild(o);
+            });
+        })
+        .catch(() => {});
+
+    sel.addEventListener("change", async () => {
+        const id = sel.value;
+        if (!id) { return; }
+        try {
+            const r = await fetch("/api/cases/" + encodeURIComponent(id));
+            if (r.ok) {
+                const c = await r.json();
+                if (c) {
+                    caseText.value = c.factDescription || "";
+                    caseId.value = c.caseId || "";
+                }
+            }
+        } catch (e) { /* ignore */ }
+    });
+})();
+</script>
+</body>
+</html>

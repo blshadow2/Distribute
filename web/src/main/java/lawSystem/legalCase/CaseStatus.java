@@ -1,0 +1,12 @@
+package lawSystem.legalCase;
+
+public enum CaseStatus {
+    INFO_REGISTERED,
+    CONSULTATION_REQUESTED,
+    RETAINER_REQUESTED,
+    RETAINER_CONDITION_SENT,
+    RETAINER_CONDITION_ACCEPTED,
+    RETAINED,
+    REJECTED,
+    CLOSED
+}

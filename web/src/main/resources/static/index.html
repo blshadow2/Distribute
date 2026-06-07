@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>AI 법률 사무 플랫폼 — AI 도구</title>
+    <link rel="stylesheet" href="/css/cohere.css"/>
+</head>
+<body>
+<header class="topbar">
+    <h1>⚖ AI 분석 도구</h1>
+    <span class="subtitle">판례 RAG 기반 분석</span>
+    <a href="/" style="margin-left:auto;color:var(--pale-green);font-size:14px;">← 대시보드</a>
+</header>
+
+<main class="container">
+    <section class="card input-card">
+        <h2>사건 내용 입력</h2>
+        <textarea id="caseText" rows="7"
+                  placeholder="사건의 사실관계 / 분석할 내용을 입력하세요.&#10;예) 피고는 정보주체의 동의 없이 공개된 개인정보를 수집하여 제3자에게 제공하였다..."></textarea>
+
+        <div class="options">
+            <label>사건 ID(선택)
+                <input type="text" id="caseId" placeholder="legal_case 의 case_id (선택)"/>
+            </label>
+            <label>top_k
+                <input type="number" id="topK" value="5" min="1" max="20"/>
+            </label>
+            <label>키워드 수
+                <input type="number" id="maxKeywords" value="5" min="1" max="20"/>
+            </label>
+        </div>
+
+        <div class="actions">
+            <button data-action="summary">📝 내용 요약</button>
+            <button data-action="keywords">🏷️ 키워드 추출</button>
+            <button data-action="precedents">📚 유사 판례</button>
+            <button data-action="legal">⚖️ 법리 설명</button>
+        </div>
+    </section>
+
+    <section class="card result-card">
+        <h2>분석 결과 <span id="status" class="status"></span></h2>
+        <div id="result" class="result"><p class="placeholder">버튼을 눌러 AI 분석을 실행하세요.</p></div>
+    </section>
+</main>
+
+<footer class="footer">Spring Boot + Spring Data JPA · Python RAG(:8000) · Ollama</footer>
+
+<script src="/app.js"></script>
+</body>
+</html>

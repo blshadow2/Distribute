@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="ko">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>변호사 찾기 · AI 법률 사무 플랫폼</title>
+    <link rel="stylesheet" href="/css/cohere.css"/>
+</head>
+<body>
+<nav th:replace="~{fragments/nav :: topnav}"></nav>
+
+<div class="container section">
+    <span class="mono-label">FIND A LAWYER</span>
+    <h1 class="display display-md" style="margin:8px 0 20px;">변호사 찾기</h1>
+
+    <!-- 검색 폼 -->
+    <form class="card" method="get" action="/lawyers"
+          style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;margin-bottom:20px;">
+        <div style="flex:2;min-width:220px;">
+            <label class="field">내 사건 키워드로 검색</label>
+            <select name="caseId" onchange="this.form.submit()">
+                <option value="">— 사건 선택(키워드 자동) —</option>
+                <option th:each="c : ${cases}" th:value="${c.caseId}" th:text="${c.title}"
+                        th:selected="${selectedCaseId != null and selectedCaseId == c.caseId}">사건</option>
+            </select>
+        </div>
+        <div style="flex:2;min-width:200px;">
+            <label class="field">키워드 (이름·소개·분야)</label>
+            <input type="text" name="keyword" th:value="${keyword}" placeholder="예) 개인정보"/>
+        </div>
+        <div style="flex:1;min-width:140px;">
+            <label class="field">분야</label>
+            <input type="text" name="specialty" th:value="${specialty}" placeholder="예) 형사"/>
+        </div>
+        <div style="flex:1;min-width:140px;">
+            <label class="field">지역</label>
+            <input type="text" name="region" th:value="${region}" placeholder="예) 부산"/>
+        </div>
+        <button type="submit" class="btn btn-primary">검색</button>
+    </form>
+    <p class="small muted" style="margin:-10px 0 20px;">
+        사건을 선택하면 <b>AI 키워드 추출로 저장된 그 사건의 키워드</b>로 자동 검색합니다.
+        (키워드가 없으면 AI 도구에서 먼저 키워드 추출을 실행하세요.)
+    </p>
+
+    <!-- 결과 -->
+    <div class="card" th:if="${#lists.isEmpty(lawyers)}">
+        <p class="muted" style="margin:0;">조건에 맞는 변호사가 없습니다.</p>
+    </div>
+
+    <div class="menu-grid" th:unless="${#lists.isEmpty(lawyers)}">
+        <div class="card" th:each="l : ${lawyers}">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+                <span class="card-title" style="margin:0;" th:text="${l.name}">이름</span>
+                <span class="badge" th:text="${l.type}">유형</span>
+            </div>
+            <div style="margin:6px 0;">
+                <span class="tag" th:each="s : ${l.specialties}" th:text="${s}">분야</span>
+            </div>
+            <div class="small muted">사무소: <span th:text="${l.officeLocation}">-</span></div>
+            <div class="small muted">현재 업무량: <span th:text="${l.currentWorkload}">0</span></div>
+            <p class="small" style="margin:10px 0;" th:text="${l.introduction}">소개</p>
+            <a class="btn btn-pill-outline" th:href="@{/consultations(lawyer=${l.lawyerId})}">상담 신청</a>
+        </div>
+    </div>
+</div>
+</body>
+</html>

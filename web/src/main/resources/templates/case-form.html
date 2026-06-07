@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="ko">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>사건 등록 · AI 법률 사무 플랫폼</title>
+    <link rel="stylesheet" href="/css/cohere.css"/>
+</head>
+<body>
+<nav th:replace="~{fragments/nav :: topnav}"></nav>
+
+<div class="container section" style="max-width:680px;">
+    <span class="mono-label">NEW CASE</span>
+    <h1 class="display display-md" style="margin:8px 0 20px;">사건 정보 등록</h1>
+
+    <form class="card" method="post" action="/cases" style="display:flex;flex-direction:column;gap:14px;">
+        <div>
+            <label class="field">사건 제목</label>
+            <input type="text" name="title" placeholder="예) 공개된 개인정보 무단 제공 손해배상" required/>
+        </div>
+        <div>
+            <label class="field">분야</label>
+            <select name="category">
+                <option th:each="cat : ${categories}" th:value="${cat}" th:text="${cat}">CIVIL</option>
+            </select>
+        </div>
+        <div>
+            <label class="field">현재 진행 단계 (선택)</label>
+            <input type="text" name="currentStage" placeholder="예) 조사 / 소송 준비"/>
+        </div>
+        <div>
+            <label class="field">사실관계 (사건 내용)</label>
+            <textarea name="factDescription" rows="9"
+                      placeholder="육하원칙에 따라 사건의 사실관계를 입력하세요. 이 내용이 AI 요약·키워드·법리 분석의 입력이 됩니다."></textarea>
+        </div>
+        <div style="display:flex;gap:10px;">
+            <button type="submit" class="btn btn-primary">등록</button>
+            <a class="btn btn-pill-outline" href="/cases">취소</a>
+        </div>
+    </form>
+</div>
+</body>
+</html>

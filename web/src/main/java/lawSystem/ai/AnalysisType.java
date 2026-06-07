@@ -1,0 +1,10 @@
+package lawSystem.ai;
+
+public enum AnalysisType {
+    CASE_SUMMARY,
+    DOCUMENT_DRAFT,
+    LEGAL_RULE_ANALYSIS,
+    SIMILAR_PRECEDENTS,
+    LAWYER_RECOMMENDATION,
+    KEYWORD_EXTRACTION
+}

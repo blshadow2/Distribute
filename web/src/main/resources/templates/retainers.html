@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="ko">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>수임 요청 · AI 법률 사무 플랫폼</title>
+    <link rel="stylesheet" href="/css/cohere.css"/>
+</head>
+<body>
+<nav th:replace="~{fragments/nav :: topnav}"></nav>
+
+<div class="container section">
+    <span class="mono-label">RETAINER</span>
+    <h1 class="display display-md" style="margin:8px 0 20px;">수임 요청</h1>
+
+    <!-- 요청 폼 -->
+    <form class="card" method="post" action="/retainers" style="display:flex;flex-direction:column;gap:12px;">
+        <div>
+            <label class="field">사건</label>
+            <select name="caseId" required>
+                <option th:each="c : ${cases}" th:value="${c.caseId}" th:text="${c.title}">사건</option>
+            </select>
+        </div>
+        <div>
+            <label class="field">변호사</label>
+            <select name="lawyerId" required>
+                <option th:each="l : ${lawyers}" th:value="${l.lawyerId}"
+                        th:text="${l.name + ' (' + l.type + ')'}">변호사</option>
+            </select>
+        </div>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;">
+            <div style="flex:2;min-width:180px;">
+                <label class="field">희망 법률대리 범위</label>
+                <input type="text" name="desiredScope" placeholder="예) 1심 소송대리"/>
+            </div>
+            <div style="flex:1;min-width:120px;">
+                <label class="field">희망 수임료(원)</label>
+                <input type="number" name="desiredFee" value="0" min="0"/>
+            </div>
+        </div>
+        <div>
+            <label class="field">희망 결과 / 요청 내용</label>
+            <input type="text" name="desiredResult" placeholder="희망 결과"/>
+        </div>
+        <div>
+            <label class="field">추가 요청</label>
+            <input type="text" name="requestContent" placeholder="기타 요청사항"/>
+        </div>
+        <div><button type="submit" class="btn btn-primary">수임 요청</button></div>
+    </form>
+
+    <!-- 내 수임 요청 -->
+    <h2 class="card-title" style="margin-top:36px;">내 수임 요청</h2>
+    <div class="card" th:if="${#lists.isEmpty(requests)}"><p class="muted" style="margin:0;">요청 내역이 없습니다.</p></div>
+
+    <div th:each="r : ${requests}" class="card" style="margin-bottom:12px;">
+        <div style="display:flex;align-items:center;gap:8px;">
+            <span class="card-title" style="margin:0;" th:text="${r.caseTitle}">사건</span>
+            <span class="badge" th:text="${r.status}">상태</span>
+        </div>
+        <div class="small muted" style="margin-top:4px;">
+            변호사 <span th:text="${r.lawyerName}"></span> ·
+            희망범위 <span th:text="${r.desiredScope}"></span> ·
+            희망수임료 <span th:text="${r.desiredFee}"></span>원
+        </div>
+
+        <!-- 전달된 수임 조건 -->
+        <div th:if="${r.hasCondition}" class="card--stone card" style="margin-top:12px;">
+            <div class="mono-label" style="margin-bottom:6px;">전달된 수임 조건</div>
+            <div class="small">수임료: <b th:text="${r.condFee}">0</b>원</div>
+            <div class="small">범위: <span th:text="${r.condScope}">-</span></div>
+            <div class="small">조건: <span th:text="${r.condTerms}">-</span></div>
+
+            <div th:if="${r.status == 'CONDITION_SENT'}" style="margin-top:10px;display:flex;gap:8px;">
+                <form th:action="@{/retainers/{id}/accept(id=${r.id})}" method="post" style="display:inline;">
+                    <button class="btn btn-primary" type="submit">수락</button>
+                </form>
+                <form th:action="@{/retainers/{id}/reject(id=${r.id})}" method="post" style="display:inline;">
+                    <button class="btn btn-pill-outline" type="submit">거절</button>
+                </form>
+            </div>
+            <form th:if="${r.status == 'CONDITION_SENT'}" th:action="@{/retainers/{id}/adjust(id=${r.id})}"
+                  method="post" style="margin-top:8px;display:flex;gap:8px;">
+                <input type="text" name="message" placeholder="조정 요청 내용(예: 수임료 조정 희망)" style="flex:1;"/>
+                <button class="btn btn-pill-outline" type="submit">조정 요청</button>
+            </form>
+            <p class="small muted" th:if="${r.status == 'CONDITION_ADJUSTMENT_REQUESTED'}" style="margin-top:8px;">
+                ↺ 조정을 요청했습니다(<span th:text="${r.adjustmentNote}"></span>). 변호사의 재제안을 기다립니다.</p>
+            <p class="small muted" th:if="${r.status == 'CONDITION_ACCEPTED'}" style="margin-top:8px;">✔ 조건을 수락했습니다. 변호사의 수임 확정을 기다립니다.</p>
+            <p class="small muted" th:if="${r.status == 'RETAINED'}" style="margin-top:8px;">✔ 수임이 확정되었습니다.</p>
+        </div>
+
+        <!-- 거절된 요청 삭제 -->
+        <form th:if="${r.status == 'REJECTED'}"
+              th:action="@{/retainers/{id}/delete(id=${r.id})}" method="post" style="margin-top:10px;">
+            <button class="btn btn-pill-outline" type="submit">신청 삭제</button>
+        </form>
+    </div>
+</div>
+</body>
+</html>

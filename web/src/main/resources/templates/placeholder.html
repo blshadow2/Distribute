@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="ko">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title th:text="${title}">기능</title>
+    <link rel="stylesheet" href="/css/cohere.css"/>
+</head>
+<body>
+<nav th:replace="~{fragments/nav :: topnav}"></nav>
+
+<div class="container section">
+    <span class="mono-label">FEATURE</span>
+    <h1 class="display display-md" th:text="${title}">기능</h1>
+    <p class="muted" th:text="${desc}">설명</p>
+    <p><span class="badge">준비 중 — Phase 2 에서 구현 예정</span></p>
+</div>
+</body>
+</html>

@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="ko">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>회원가입 · AI 법률 사무 플랫폼</title>
+    <link rel="stylesheet" href="/css/cohere.css"/>
+</head>
+<body>
+<div class="auth-wrap">
+    <div class="auth-card">
+        <span class="mono-label">CLIENT SIGN-UP</span>
+        <h1>의뢰인<br/>회원가입</h1>
+        <p class="sub">사건을 의뢰할 의뢰인 계정을 만듭니다.</p>
+        <p class="err" th:if="${error}" th:text="${error}"></p>
+        <form method="post" action="/register">
+            <input type="text" name="name" placeholder="이름" required autofocus/>
+            <input type="email" name="email" placeholder="이메일" required/>
+            <input type="password" name="password" placeholder="비밀번호" required/>
+            <input type="text" name="phoneNumber" placeholder="휴대폰 번호 (선택)"/>
+            <input type="text" name="address" placeholder="주소 (선택)"/>
+            <button type="submit" class="btn btn-primary btn-block">가입하기</button>
+        </form>
+        <div class="links"><a href="/login">← 로그인으로</a></div>
+    </div>
+</div>
+</body>
+</html>

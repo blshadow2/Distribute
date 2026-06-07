@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+<!-- 모든 내부 페이지 상단에 들어가는 공용 메뉴바. 세션의 역할에 따라 메뉴가 달라진다. -->
+<nav th:fragment="topnav" class="topnav"
+     th:with="role=${session.loginMember != null ? session.loginMember.viewRole : ''}">
+    <a class="brand" href="/">⚖ AI 법률 사무 플랫폼</a>
+
+    <div class="links">
+        <a href="/">대시보드</a>
+
+        <th:block th:if="${role == 'CLIENT'}">
+            <a href="/cases">내 사건</a>
+            <a href="/lawyers">변호사 찾기</a>
+            <a href="/consultations">상담</a>
+            <a href="/retainers">수임</a>
+            <a href="/progress">진행 상황</a>
+        </th:block>
+
+        <th:block th:if="${role == 'PARTNER'}">
+            <a href="/retainer-mgmt">수임 관리</a>
+            <a href="/assign">사건 배당</a>
+            <a href="/my-cases">담당 사건</a>
+        </th:block>
+
+        <th:block th:if="${role == 'ASSOCIATE'}">
+            <a href="/my-cases">담당 사건</a>
+            <a href="/progress-share">진행 공유</a>
+        </th:block>
+
+        <th:block th:if="${role == 'STAFF'}">
+            <a href="/schedules">상담 일정</a>
+        </th:block>
+
+        <a href="/ai-tools">AI 도구</a>
+    </div>
+
+    <div class="right">
+        <span class="badge" th:text="${role}">ROLE</span>
+        <span th:text="${session.loginMember != null ? session.loginMember.name : ''}">사용자</span>
+        <a href="/logout">로그아웃</a>
+    </div>
+</nav>
+</body>
+</html>

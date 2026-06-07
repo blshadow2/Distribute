@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<persistence xmlns="https://jakarta.ee/xml/ns/persistence"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xsi:schemaLocation="https://jakarta.ee/xml/ns/persistence
+                 https://jakarta.ee/xml/ns/persistence/persistence_3_0.xsd"
+             version="3.0">
+
+    <!--
+        Hibernate 6 + JPA 3.1 (jakarta.persistence) 기준이다.
+        실제 접속 URL/사용자/비밀번호는 환경 변수로 주입되며,
+        JpaManager 가 PersistenceUnit 빌드시 동적으로 덮어쓴다.
+    -->
+    <persistence-unit name="lawSystem" transaction-type="RESOURCE_LOCAL">
+        <provider>org.hibernate.jpa.HibernatePersistenceProvider</provider>
+
+        <!-- 엔티티 명시 등록 (Hibernate 의 자동 스캔에 의존하지 않도록) -->
+        <class>lawSystem.jpa.entity.Member</class>
+        <class>lawSystem.jpa.entity.Client</class>
+        <class>lawSystem.jpa.entity.Lawyer</class>
+        <class>lawSystem.jpa.entity.PartnerLawyer</class>
+        <class>lawSystem.jpa.entity.AssociateLawyer</class>
+        <class>lawSystem.jpa.entity.Staff</class>
+        <class>lawSystem.jpa.entity.LegalCase</class>
+        <class>lawSystem.jpa.entity.CaseInfo</class>
+        <class>lawSystem.jpa.entity.Evidence</class>
+        <class>lawSystem.jpa.entity.CaseDocument</class>
+        <class>lawSystem.jpa.entity.ProgressionRecord</class>
+        <class>lawSystem.jpa.entity.SimilarPrecedent</class>
+        <class>lawSystem.jpa.entity.ConsultationRequest</class>
+        <class>lawSystem.jpa.entity.ConsultationSchedule</class>
+        <class>lawSystem.jpa.entity.RetainerRequest</class>
+        <class>lawSystem.jpa.entity.RetainerCondition</class>
+        <class>lawSystem.jpa.entity.VerificationResult</class>
+        <class>lawSystem.jpa.entity.ElectronicSignature</class>
+        <class>lawSystem.jpa.entity.AIAnalysisFunction</class>
+        <class>lawSystem.jpa.entity.AIAnalysisRequest</class>
+        <class>lawSystem.jpa.entity.AIAnalysisResult</class>
+        <class>lawSystem.jpa.entity.Precedent</class>
+
+        <exclude-unlisted-classes>true</exclude-unlisted-classes>
+
+        <properties>
+            <!-- JDBC 기본값. 실제 값은 JpaManager 에서 env 로 덮어씀 -->
+            <property name="jakarta.persistence.jdbc.driver" value="org.mariadb.jdbc.Driver"/>
+            <property name="jakarta.persistence.jdbc.url"
+                      value="jdbc:mariadb://localhost:3306/law_system_jpa?useUnicode=true&amp;characterEncoding=utf8&amp;serverTimezone=Asia/Seoul"/>
+            <property name="jakarta.persistence.jdbc.user" value="root"/>
+            <property name="jakarta.persistence.jdbc.password" value=""/>
+
+            <!-- Hibernate 동작 설정 -->
+            <property name="hibernate.dialect" value="org.hibernate.dialect.MariaDBDialect"/>
+            <property name="hibernate.hbm2ddl.auto" value="update"/>
+            <property name="hibernate.show_sql" value="true"/>
+            <property name="hibernate.format_sql" value="true"/>
+            <property name="hibernate.use_sql_comments" value="true"/>
+            <property name="hibernate.connection.CharSet" value="utf8mb4"/>
+            <property name="hibernate.connection.characterEncoding" value="utf8"/>
+            <property name="hibernate.connection.useUnicode" value="true"/>
+        </properties>
+    </persistence-unit>
+</persistence>

@@ -1,0 +1,81 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="720" viewBox="0 0 1000 720" font-family="'Segoe UI','Malgun Gothic',sans-serif">
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L8,3 L0,6 Z" fill="#17171c"/>
+    </marker>
+    <style>
+      .box   { rx:14; stroke:#d9d9dd; stroke-width:1.5; }
+      .title { font-size:17px; font-weight:600; fill:#17171c; }
+      .sub   { font-size:12.5px; fill:#374151; }
+      .mono  { font-size:11px; fill:#75758a; letter-spacing:.5px; }
+      .lbl   { font-size:12px; fill:#1863dc; font-weight:600; }
+      .edge  { stroke:#17171c; stroke-width:1.6; fill:none; marker-end:url(#arrow); }
+    </style>
+  </defs>
+
+  <!-- canvas -->
+  <rect x="0" y="0" width="1000" height="720" fill="#ffffff"/>
+  <text x="500" y="34" text-anchor="middle" font-size="22" font-weight="700" fill="#003c33">AI 기반 법률 사무 플랫폼 — 시스템 아키텍처</text>
+  <text x="500" y="55" text-anchor="middle" class="mono">JAVA(Spring Boot) · PYTHON(RAG) · MARIADB(JPA)</text>
+
+  <!-- Browser -->
+  <rect class="box" x="375" y="72" width="250" height="58" fill="#eeece7"/>
+  <text x="500" y="98" text-anchor="middle" class="title">브라우저</text>
+  <text x="500" y="118" text-anchor="middle" class="sub">의뢰인 · 대표/소속 변호사 · 사무직원</text>
+
+  <!-- Spring Boot -->
+  <rect class="box" x="300" y="178" width="400" height="158" fill="#f1f5ff"/>
+  <text x="500" y="204" text-anchor="middle" class="title">Spring Boot 웹앱 · :8080</text>
+  <text x="500" y="228" text-anchor="middle" class="sub">Thymeleaf 화면(서버 렌더링) + @RestController(AI JSON)</text>
+  <text x="500" y="250" text-anchor="middle" class="sub">Controller → Service(@Transactional) → Repository(Spring Data JPA)</text>
+  <text x="500" y="272" text-anchor="middle" class="sub">인증: HttpSession + LoginInterceptor · 권한: @RoleAllowed</text>
+  <text x="500" y="294" text-anchor="middle" class="sub">기능: 사건·증거·변호사검색·상담·수임·진행상황·AI</text>
+  <text x="500" y="318" text-anchor="middle" class="mono">시작 시드 @Order: 회원 → 판례 → 담당사건</text>
+
+  <!-- MariaDB -->
+  <rect class="box" x="70" y="430" width="330" height="150" fill="#edfce9"/>
+  <text x="235" y="456" text-anchor="middle" class="title">MariaDB · law_system_jpa</text>
+  <text x="235" y="480" text-anchor="middle" class="sub">단일 진실 공급원 (Hibernate ddl=update)</text>
+  <text x="235" y="503" text-anchor="middle" class="sub">member·client·lawyer·legal_case·evidence</text>
+  <text x="235" y="523" text-anchor="middle" class="sub">consultation·retainer·progression</text>
+  <text x="235" y="543" text-anchor="middle" class="sub">ai_analysis_request/result</text>
+  <text x="235" y="566" text-anchor="middle" class="sub">precedent · precedent_keyword (판례 원본)</text>
+
+  <!-- Python RAG -->
+  <rect class="box" x="600" y="430" width="340" height="150" fill="#eeece7"/>
+  <text x="770" y="456" text-anchor="middle" class="title">Python RAG 서비스 · :8000</text>
+  <text x="770" y="480" text-anchor="middle" class="sub">FastAPI · 검색(/search) · 생성(/answer)</text>
+  <text x="770" y="500" text-anchor="middle" class="sub">BGE-M3 임베딩 + Chroma 벡터DB + BM25/RRF</text>
+  <text x="770" y="522" text-anchor="middle" class="sub">tasks: 요약 · 키워드 · 법리(RAG 결합)</text>
+  <text x="770" y="545" text-anchor="middle" class="sub">검색결과 = external_case_id + score</text>
+  <text x="770" y="566" text-anchor="middle" class="mono">JSONL → DB.precedent → build_index → Chroma</text>
+
+  <!-- Ollama -->
+  <rect class="box" x="650" y="638" width="240" height="54" fill="#003c33" stroke="#003c33"/>
+  <text x="770" y="664" text-anchor="middle" class="title" fill="#ffffff">Ollama · :11434</text>
+  <text x="770" y="682" text-anchor="middle" class="sub" fill="#edfce9">로컬 LLM (qwen2.5 / gemma)</text>
+
+  <!-- edges -->
+  <!-- browser <-> spring boot -->
+  <path class="edge" d="M500,130 L500,176"/>
+  <text x="512" y="158" class="lbl">HTTP</text>
+
+  <!-- spring boot -> mariadb -->
+  <path class="edge" d="M395,336 L255,428"/>
+  <text x="290" y="392" class="lbl">JPA / Hibernate</text>
+
+  <!-- spring boot -> python -->
+  <path class="edge" d="M605,336 L745,428"/>
+  <text x="650" y="392" class="lbl">HTTP/1.1 + Jackson</text>
+
+  <!-- python -> mariadb (pymysql, read precedents) -->
+  <path class="edge" d="M598,510 L402,510"/>
+  <text x="500" y="500" text-anchor="middle" class="lbl">pymysql (판례 읽기)</text>
+
+  <!-- python -> ollama -->
+  <path class="edge" d="M770,580 L770,636"/>
+  <text x="782" y="612" class="lbl">LLM /api/chat</text>
+
+  <!-- footer -->
+  <text x="500" y="712" text-anchor="middle" class="mono">세 구성요소는 LAWSYSTEM_DB_URL 로 같은 DB(law_system_jpa)를 공유한다</text>
+</svg>

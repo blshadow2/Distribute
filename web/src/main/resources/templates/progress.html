@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="ko">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>진행 상황 · AI 법률 사무 플랫폼</title>
+    <link rel="stylesheet" href="/css/cohere.css"/>
+</head>
+<body>
+<nav th:replace="~{fragments/nav :: topnav}"></nav>
+
+<div class="container section">
+    <span class="mono-label">PROGRESS</span>
+    <h1 class="display display-md" style="margin:8px 0 20px;">사건 진행 상황</h1>
+
+    <div class="card" th:if="${#lists.isEmpty(records)}">
+        <p class="muted" style="margin:0;">담당 변호사가 공유한 진행상황이 아직 없습니다.</p>
+    </div>
+
+    <div th:each="r : ${records}" class="card" style="margin-bottom:12px;">
+        <div style="display:flex;align-items:center;gap:8px;">
+            <span class="card-title" style="margin:0;" th:text="${r.caseTitle}">사건</span>
+            <span class="badge" th:text="${r.progressStatus}">상태</span>
+        </div>
+        <p class="small" style="margin:8px 0 0;" th:text="${r.description}">설명</p>
+        <p class="small muted" style="margin:4px 0 0;" th:if="${r.recentAction}">최근 조치: <span th:text="${r.recentAction}"></span></p>
+        <p class="small" style="margin:6px 0 0;color:#92400e;" th:if="${r.requestedMaterial}">
+            📎 요청 자료: <span th:text="${r.requestedMaterial}"></span>
+        </p>
+    </div>
+</div>
+</body>
+</html>

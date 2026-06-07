@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="ko">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>대시보드 · AI 법률 사무 플랫폼</title>
+    <link rel="stylesheet" href="/css/cohere.css"/>
+</head>
+<body>
+<nav th:replace="~{fragments/nav :: topnav}"></nav>
+
+<div class="container">
+    <div class="hero">
+        <span class="mono-label">DASHBOARD</span>
+        <h1><span th:text="${member != null ? member.name : ''}">사용자</span>님, 환영합니다.</h1>
+    </div>
+
+    <!-- 공통: AI 도구 (강조 밴드) -->
+    <span class="mono-label section-label">AI TOOLS</span>
+    <div class="menu-grid">
+        <a class="menu-band" href="/ai-tools">
+            <div class="t">AI 분석 도구</div>
+            <div class="d">키워드 · 법리 설명 (변호사는 요약 · 유사판례 추가)</div>
+        </a>
+    </div>
+
+    <!-- 의뢰인 -->
+    <div th:if="${member != null and member.viewRole == 'CLIENT'}">
+        <span class="mono-label section-label">CLIENT</span>
+        <div class="menu-grid">
+            <a class="menu" href="/cases"><div class="t">내 사건</div><div class="d">사건 등록 · 목록</div></a>
+            <a class="menu" href="/lawyers"><div class="t">변호사 찾기</div><div class="d">상담/수임 신청</div></a>
+            <a class="menu" href="/consultations"><div class="t">상담 신청</div><div class="d">상담 신청 내역</div></a>
+            <a class="menu" href="/retainers"><div class="t">수임 요청</div><div class="d">수임 요청 · 조건 응답</div></a>
+            <a class="menu" href="/progress"><div class="t">진행 상황</div><div class="d">수임 사건 진행 열람</div></a>
+        </div>
+    </div>
+
+    <!-- 대표 변호사 -->
+    <div th:if="${member != null and member.viewRole == 'PARTNER'}">
+        <span class="mono-label section-label">PARTNER LAWYER</span>
+        <div class="menu-grid">
+            <a class="menu" href="/retainer-mgmt"><div class="t">수임 요청 관리</div><div class="d">수임 조건 전달 · 수임</div></a>
+            <a class="menu" href="/assign"><div class="t">사건 배당</div><div class="d">소속 변호사 배당 + AI 추천</div></a>
+            <a class="menu" href="/my-cases"><div class="t">담당 사건</div><div class="d">배당된 사건 목록</div></a>
+        </div>
+    </div>
+
+    <!-- 소속 변호사 -->
+    <div th:if="${member != null and member.viewRole == 'ASSOCIATE'}">
+        <span class="mono-label section-label">ASSOCIATE LAWYER</span>
+        <div class="menu-grid">
+            <a class="menu" href="/my-cases"><div class="t">담당 사건</div><div class="d">자료 정리 · 문서 작성</div></a>
+            <a class="menu" href="/progress-share"><div class="t">진행상황 공유</div><div class="d">의뢰인에 진행 공유</div></a>
+        </div>
+    </div>
+
+    <!-- 사무 직원 -->
+    <div th:if="${member != null and member.viewRole == 'STAFF'}">
+        <span class="mono-label section-label">STAFF</span>
+        <div class="menu-grid">
+            <a class="menu" href="/schedules"><div class="t">상담 일정 관리</div><div class="d">일정 등록 · 신청 응답</div></a>
+        </div>
+    </div>
+</div>
+
+<div class="footer">SPRING BOOT · SPRING DATA JPA · PYTHON RAG · OLLAMA</div>
+</body>
+</html>

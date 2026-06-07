@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="ko">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>상담 신청 · AI 법률 사무 플랫폼</title>
+    <link rel="stylesheet" href="/css/cohere.css"/>
+</head>
+<body>
+<nav th:replace="~{fragments/nav :: topnav}"></nav>
+
+<div class="container section">
+    <span class="mono-label">CONSULTATION</span>
+    <h1 class="display display-md" style="margin:8px 0 20px;">상담 신청</h1>
+
+    <!-- 신청 폼 -->
+    <form class="card" method="post" action="/consultations" style="display:flex;flex-direction:column;gap:12px;">
+        <div>
+            <label class="field">사건 (선택)</label>
+            <select name="caseId">
+                <option value="">— 선택 안 함 —</option>
+                <option th:each="c : ${cases}" th:value="${c.caseId}" th:text="${c.title}">사건</option>
+            </select>
+        </div>
+        <div>
+            <label class="field">변호사</label>
+            <select name="lawyerId" required>
+                <option th:each="l : ${lawyers}" th:value="${l.lawyerId}"
+                        th:text="${l.name + ' (' + l.type + ')'}"
+                        th:selected="${selectedLawyer != null and selectedLawyer == l.lawyerId}">변호사</option>
+            </select>
+        </div>
+        <div>
+            <label class="field">상담 일정 (선택)</label>
+            <select name="scheduleId">
+                <option value="">— 미정 —</option>
+                <option th:each="s : ${schedules}" th:value="${s.scheduleId}"
+                        th:text="${s.lawyerName + ' · ' + s.dateTime + ' (' + s.duration + '분)'}">일정</option>
+            </select>
+        </div>
+        <div>
+            <label class="field">메모 (선택)</label>
+            <input type="text" name="memo" placeholder="상담 요청 내용"/>
+        </div>
+        <div><button type="submit" class="btn btn-primary">상담 신청</button></div>
+    </form>
+
+    <!-- 내 신청 목록 -->
+    <h2 class="card-title" style="margin-top:36px;">내 상담 신청</h2>
+    <div class="card" th:if="${#lists.isEmpty(requests)}"><p class="muted" style="margin:0;">신청 내역이 없습니다.</p></div>
+    <div class="card" th:unless="${#lists.isEmpty(requests)}" style="padding:0;overflow:hidden;">
+        <table class="table">
+            <thead><tr><th>변호사</th><th>사건</th><th>일정</th><th>상태</th><th>신청일</th><th></th></tr></thead>
+            <tbody>
+            <tr th:each="r : ${requests}">
+                <td th:text="${r.lawyerName}">변호사</td>
+                <td th:text="${r.caseTitle}">사건</td>
+                <td th:text="${r.scheduleTime}">일정</td>
+                <td><span class="badge" th:text="${r.status}">상태</span></td>
+                <td th:text="${r.requestedAt}">신청일</td>
+                <td>
+                    <form th:if="${r.status == 'REJECTED' or r.status == 'CANCELED'}"
+                          th:action="@{/consultations/{id}/delete(id=${r.id})}" method="post" style="display:inline;">
+                        <button class="btn btn-pill-outline" type="submit">삭제</button>
+                    </form>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+</body>
+</html>
