@@ -51,23 +51,33 @@ public class AiController {
         return aiWebService.summarize(request.getText(), request.getCaseId());
     }
 
+    /** 키워드 추출 (미리보기). 저장은 /keywords/save 에서 명시적으로 수행한다. */
     @PostMapping("/keywords")
-    public KeywordsResponse keywords(@RequestBody AiRequest request, HttpSession session) {
-        KeywordsResponse resp = aiWebService.extractKeywords(
-                request.getText(), request.getMaxKeywords(), request.getCaseId());
+    public KeywordsResponse keywords(@RequestBody AiRequest request) {
+        return aiWebService.extractKeywords(request.getText(), request.getMaxKeywords());
+    }
 
-        if (!resp.getKeywords().isEmpty()) {
-            // ① 추출 키워드를 사건에 저장 → 변호사 검색 등에 그대로 사용
-            if (request.getCaseId() != null && !request.getCaseId().isBlank()) {
-                caseService.saveKeywords(request.getCaseId(), resp.getKeywords());
-            }
-            // ② 변호사가 실행한 경우 → 본인 전문분야(검색 대상)에 키워드 누적
-            LoginMember m = (LoginMember) session.getAttribute(SessionConst.LOGIN_MEMBER);
-            if (m != null && ("PARTNER".equals(m.getViewRole()) || "ASSOCIATE".equals(m.getViewRole()))) {
-                lawyerService.addKeywords(m.getMemberId(), resp.getKeywords());
-            }
+    /**
+     * 추출한 키워드 저장. (사용자가 "키워드 저장" 버튼을 눌렀을 때)
+     *  ① 사건(legal_case)에 키워드 저장 → 사건 상세/변호사 검색에 반영
+     *  ② 사건의 AI 분석 이력(ai_analysis_result)에 기록
+     *  ③ 변호사가 실행한 경우 → 본인 전문분야(검색 대상)에 누적
+     */
+    @PostMapping("/keywords/save")
+    public KeywordsResponse saveKeywords(@RequestBody AiRequest request, HttpSession session) {
+        List<String> keywords = request.getKeywords();
+        if (keywords == null || keywords.isEmpty()) {
+            return new KeywordsResponse(List.of());
         }
-        return resp;
+        if (request.getCaseId() != null && !request.getCaseId().isBlank()) {
+            caseService.saveKeywords(request.getCaseId(), keywords);                 // ①
+            aiWebService.recordKeywords(request.getCaseId(), request.getText(), keywords); // ②
+        }
+        LoginMember m = (LoginMember) session.getAttribute(SessionConst.LOGIN_MEMBER);   // ③
+        if (m != null && ("PARTNER".equals(m.getViewRole()) || "ASSOCIATE".equals(m.getViewRole()))) {
+            lawyerService.addKeywords(m.getMemberId(), keywords);
+        }
+        return new KeywordsResponse(keywords);
     }
 
     @RoleAllowed({"ASSOCIATE", "PARTNER"})   // 의뢰인 차단 — 변호사 전용

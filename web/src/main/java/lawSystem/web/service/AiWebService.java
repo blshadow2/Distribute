@@ -71,24 +71,27 @@ public class AiWebService {
                 result != null ? result.getConfidenceScore() : 0.0);
     }
 
-    /** 키워드 추출 (RAG 호출 + 사건이 지정되면 결과를 그 사건으로 저장). */
-    public KeywordsResponse extractKeywords(String text, Integer maxKeywords, String caseId) {
+    /** 키워드 추출 (미리보기 전용 — RAG/LLM 호출만, 영속화는 하지 않는다). */
+    public KeywordsResponse extractKeywords(String text, Integer maxKeywords) {
         int max = (maxKeywords == null || maxKeywords < 1) ? 5 : maxKeywords;
-        KeywordsResponse resp;
         try {
-            resp = new KeywordsResponse(ragClient.extractKeywords(text, max));
+            return new KeywordsResponse(ragClient.extractKeywords(text, max));
         } catch (Exception e) {
-            resp = new KeywordsResponse(List.of());
+            return new KeywordsResponse(List.of());
         }
-        if (caseId != null && !caseId.isBlank() && !resp.getKeywords().isEmpty()) {
-            try {
-                aiPersistenceService.save(caseId, AnalysisType.KEYWORD_EXTRACTION, text,
-                        "키워드: " + String.join(", ", resp.getKeywords()), 0.9);
-            } catch (Exception ignore) {
-                // 저장 실패는 표시 결과에 영향 주지 않음
-            }
+    }
+
+    /** 키워드를 사건의 AI 분석 이력(ai_analysis_result)에 기록한다. (사건 키워드 저장과 별개) */
+    public void recordKeywords(String caseId, String text, List<String> keywords) {
+        if (caseId == null || caseId.isBlank() || keywords == null || keywords.isEmpty()) {
+            return;
         }
-        return resp;
+        try {
+            aiPersistenceService.save(caseId, AnalysisType.KEYWORD_EXTRACTION, text,
+                    "키워드: " + String.join(", ", keywords), 0.9);
+        } catch (Exception ignore) {
+            // 이력 저장 실패는 사건 키워드 저장 결과에 영향 주지 않음
+        }
     }
 
     /** 유사 판례 목록 (검색 → DB 본문 조립, 표시용). */

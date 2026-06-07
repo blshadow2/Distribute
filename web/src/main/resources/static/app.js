@@ -3,6 +3,9 @@
 const resultEl = document.getElementById("result");
 const statusEl = document.getElementById("status");
 
+// 마지막으로 추출된 키워드 (저장 버튼이 사용)
+let lastKeywords = [];
+
 function val(id) { return document.getElementById(id).value.trim(); }
 function intVal(id) { const v = parseInt(document.getElementById(id).value, 10); return isNaN(v) ? null : v; }
 
@@ -43,9 +46,47 @@ function renderSummary(d) {
 }
 
 function renderKeywords(d) {
-    const tags = (d.keywords || []).map(k => '<span class="tag">' + escapeHtml(k) + "</span>").join("");
+    lastKeywords = d.keywords || [];
+    const tags = lastKeywords.map(k => '<span class="tag">' + escapeHtml(k) + "</span>").join("");
+    const cid = val("caseId");
+
+    let saveUi = "";
+    if (lastKeywords.length > 0 && cid) {
+        saveUi =
+            '<div style="margin-top:14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">' +
+            '<button id="saveKw" class="btn btn-primary" type="button">💾 이 키워드를 사건에 저장</button>' +
+            '<span id="saveKwMsg" class="small muted">사건 <code>' + escapeHtml(cid) + '</code> 에 저장됩니다.</span>' +
+            "</div>";
+    } else if (lastKeywords.length > 0) {
+        saveUi = '<p class="small muted" style="margin-top:14px;">저장하려면 위에서 <b>사건을 선택</b>하거나 사건 ID를 입력하세요.</p>';
+    }
+
     resultEl.innerHTML = '<div class="block"><h3>추출 키워드</h3>' +
-        (tags || '<span class="placeholder">키워드 없음</span>') + "</div>";
+        (tags || '<span class="placeholder">키워드 없음</span>') + saveUi + "</div>";
+
+    const saveBtn = document.getElementById("saveKw");
+    if (saveBtn) { saveBtn.addEventListener("click", saveKeywords); }
+}
+
+async function saveKeywords() {
+    const cid = val("caseId");
+    const btn = document.getElementById("saveKw");
+    const msg = document.getElementById("saveKwMsg");
+    if (!cid || lastKeywords.length === 0) { return; }
+    if (btn) { btn.disabled = true; }
+    if (msg) { msg.textContent = "저장 중…"; }
+    try {
+        await postJson("/api/ai/keywords/save",
+            { caseId: cid, keywords: lastKeywords, text: val("caseText") });
+        if (btn) { btn.textContent = "저장됨"; }
+        if (msg) {
+            msg.innerHTML = '✅ 저장 완료 — <a href="/cases/' + encodeURIComponent(cid) +
+                '">사건 상세에서 확인</a>';
+        }
+    } catch (e) {
+        if (btn) { btn.disabled = false; }
+        if (msg) { msg.textContent = "저장 실패: " + e.message; }
+    }
 }
 
 function renderPrecedents(list) {
