@@ -69,10 +69,12 @@ public class AiController {
         if (keywords == null || keywords.isEmpty()) {
             return new KeywordsResponse(List.of());
         }
+        // ① 사건 키워드 필드 저장 (사건이 지정된 경우)
         if (request.getCaseId() != null && !request.getCaseId().isBlank()) {
-            caseService.saveKeywords(request.getCaseId(), keywords);                 // ①
-            aiWebService.recordKeywords(request.getCaseId(), request.getText(), keywords); // ②
+            caseService.saveKeywords(request.getCaseId(), keywords);
         }
+        // ② AI 분석 이력 저장 (항상 — 사건 미지정 시 case_id=null 로 기록)
+        aiWebService.recordKeywords(request.getCaseId(), request.getText(), keywords);
         LoginMember m = (LoginMember) session.getAttribute(SessionConst.LOGIN_MEMBER);   // ③
         if (m != null && ("PARTNER".equals(m.getViewRole()) || "ASSOCIATE".equals(m.getViewRole()))) {
             lawyerService.addKeywords(m.getMemberId(), keywords);

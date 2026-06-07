@@ -1,20 +1,19 @@
 package lawSystem.web.service;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
 
-import lawSystem.ai.AIAnalysisResult;
-import lawSystem.ai.AIAnalysisService;
 import lawSystem.ai.AnalysisType;
-import lawSystem.ai.CaseAnalysisReport;
-import lawSystem.ai.CaseSummary;
 import lawSystem.ai.PrecedentAnalysisResult;
 import lawSystem.ai.SimilarPrecedentsAnalysis;
 import lawSystem.precedent.LegalRulesDto;
 import lawSystem.precedent.PrecedentRagClient;
+import lawSystem.precedent.SummaryDto;
 import lawSystem.web.dto.AiResultResponse;
 import lawSystem.web.dto.KeywordsResponse;
 import lawSystem.web.dto.LegalRulesResponse;
@@ -25,18 +24,17 @@ import lawSystem.web.repository.AiResultRepository;
 /**
  * AI 기능 웹 서비스.
  *
- * - 쓰기(요약): 기존 도메인 오케스트레이터 {@link AIAnalysisService} 를 그대로 재사용한다.
- *   (요청→호출→저장 + Python RAG 연동까지 처리, JDBC DAO 로 영속화)
- * - 읽기(결과 조회): Spring Data JPA 리포지토리로 ai_analysis_result 를 조회한다.
+ * 모든 AI 기능(요약/키워드/법리/유사판례)의 "요청 → 결과"를 단일 JPA 경로
+ * ({@link AiPersistenceService})로 영속화한다. (기존 JDBC DAO 경로는 웹에서 사용하지 않는다.)
+ * 저장 실패는 사용자 응답을 막지 않되 로그로 남겨 원인을 드러낸다.
  */
 @Service
 public class AiWebService {
 
+    private static final Logger log = LoggerFactory.getLogger(AiWebService.class);
+
     private final AiResultRepository aiResultRepository;
     private final AiPersistenceService aiPersistenceService;
-
-    // 도메인 오케스트레이터/기능 객체는 경량이라 매 호출 생성해도 무방하다.
-    private final AIAnalysisService analysisService = new AIAnalysisService();
     private final PrecedentRagClient ragClient = new PrecedentRagClient();
 
     public AiWebService(AiResultRepository aiResultRepository,
@@ -45,56 +43,40 @@ public class AiWebService {
         this.aiPersistenceService = aiPersistenceService;
     }
 
-    /** 사건 내용 요약 → ai_analysis_request/result 저장 후 결과 반환. */
+    /** 사건 내용 요약 → RAG/LLM 호출 후 JPA 로 저장(항상). */
     public SummaryResponse summarize(String text, String caseId) {
-        AIAnalysisResult result = analysisService.analyze(
-                null,                       // requesterId (로그인 연동 시 주입)
-                caseId,                     // null 또는 legal_case 에 존재하는 case_id
-                AnalysisType.CASE_SUMMARY,
-                text,
-                new CaseSummary());
-
-        if (result instanceof CaseAnalysisReport report) {
-            return new SummaryResponse(
-                    report.getAiResultId(),
-                    report.getSummary(),
-                    report.getMainIssues(),
-                    report.getTimeline(),
-                    report.getConfidenceScore());
+        SummaryDto dto;
+        try {
+            dto = ragClient.summarize(text, caseId);
+        } catch (Exception e) {
+            log.warn("[AI] 요약 호출 실패: {}", e.getMessage());
+            dto = new SummaryDto("요약 생성 실패(AI 서비스 오류)", List.of(), "");
         }
-        // 폴백(이론상 도달하지 않음)
-        return new SummaryResponse(
-                result != null ? result.getAiResultId() : null,
-                result != null ? result.getSummaryText() : "요약 생성 실패",
-                java.util.List.of(),
-                "",
-                result != null ? result.getConfidenceScore() : 0.0);
+        String resultId = persist(caseId, AnalysisType.CASE_SUMMARY, text, buildSummaryText(dto), 0.9);
+        return new SummaryResponse(resultId, dto.getSummary(), dto.getMainIssues(), dto.getTimeline(), 0.9);
     }
 
-    /** 키워드 추출 (미리보기 전용 — RAG/LLM 호출만, 영속화는 하지 않는다). */
+    /** 키워드 추출 (미리보기 전용 — 저장하지 않는다. 저장은 recordKeywords). */
     public KeywordsResponse extractKeywords(String text, Integer maxKeywords) {
         int max = (maxKeywords == null || maxKeywords < 1) ? 5 : maxKeywords;
         try {
             return new KeywordsResponse(ragClient.extractKeywords(text, max));
         } catch (Exception e) {
+            log.warn("[AI] 키워드 추출 실패: {}", e.getMessage());
             return new KeywordsResponse(List.of());
         }
     }
 
-    /** 키워드를 사건의 AI 분석 이력(ai_analysis_result)에 기록한다. (사건 키워드 저장과 별개) */
+    /** 추출 키워드를 AI 분석 이력(ai_analysis_request/result)에 저장(항상, caseId 선택). */
     public void recordKeywords(String caseId, String text, List<String> keywords) {
-        if (caseId == null || caseId.isBlank() || keywords == null || keywords.isEmpty()) {
+        if (keywords == null || keywords.isEmpty()) {
             return;
         }
-        try {
-            aiPersistenceService.save(caseId, AnalysisType.KEYWORD_EXTRACTION, text,
-                    "키워드: " + String.join(", ", keywords), 0.9);
-        } catch (Exception ignore) {
-            // 이력 저장 실패는 사건 키워드 저장 결과에 영향 주지 않음
-        }
+        persist(caseId, AnalysisType.KEYWORD_EXTRACTION, text,
+                "키워드: " + String.join(", ", keywords), 0.9);
     }
 
-    /** 유사 판례 목록 (검색 → DB 본문 조립, 표시용). */
+    /** 유사 판례 목록 (검색 → DB 본문 조립) + 결과 저장. */
     public List<PrecedentDto> similarPrecedents(String query, String caseId) {
         List<PrecedentDto> out = new ArrayList<>();
         List<PrecedentAnalysisResult> results =
@@ -107,10 +89,11 @@ public class AiWebService {
                     r.getLegalIssue(),
                     r.getPrecedentSummary()));
         }
+        persist(caseId, AnalysisType.SIMILAR_PRECEDENTS, query, buildPrecedentText(out), 0.8);
         return out;
     }
 
-    /** 법리 분석 (RAG 결합). */
+    /** 법리 분석 (RAG 결합) + 결과 저장(항상). */
     public LegalRulesResponse analyzeLegalRules(String query, String caseId, Integer topK) {
         int k = (topK == null || topK < 1) ? 5 : topK;
         LegalRulesResponse resp;
@@ -120,19 +103,13 @@ public class AiWebService {
                     d.getIssueSummary(), d.getApplicableLaw(), d.getLegalExplanation(),
                     d.getRelatedStatutes(), d.getCitedCases());
         } catch (Exception e) {
-            resp = new LegalRulesResponse("", "", "법리 분석 실패(AI 서비스 오류)",
-                    List.of(), List.of());
+            log.warn("[AI] 법리 분석 실패: {}", e.getMessage());
+            resp = new LegalRulesResponse("", "", "법리 분석 실패(AI 서비스 오류)", List.of(), List.of());
         }
-        if (caseId != null && !caseId.isBlank()) {
-            try {
-                String summary = "[쟁점] " + resp.getIssueSummary()
-                        + "\n[적용 법리] " + resp.getApplicableLaw()
-                        + "\n[설명] " + resp.getLegalExplanation();
-                aiPersistenceService.save(caseId, AnalysisType.LEGAL_RULE_ANALYSIS, query, summary, 0.85);
-            } catch (Exception ignore) {
-                // 저장 실패는 표시 결과에 영향 주지 않음
-            }
-        }
+        String stored = "[쟁점] " + nz(resp.getIssueSummary())
+                + "\n[적용 법리] " + nz(resp.getApplicableLaw())
+                + "\n[설명] " + nz(resp.getLegalExplanation());
+        persist(caseId, AnalysisType.LEGAL_RULE_ANALYSIS, query, stored, 0.85);
         return resp;
     }
 
@@ -148,5 +125,44 @@ public class AiWebService {
                         e.getGeneratedAt(),
                         e.isReviewed()))
                 .orElse(null);
+    }
+
+    // ── 내부 헬퍼 ────────────────────────────────────────────────
+    /** 요청+결과를 JPA 로 저장. 실패해도 응답은 유지하되 로그로 남긴다. */
+    private String persist(String caseId, AnalysisType type, String prompt,
+                           String resultText, double confidence) {
+        try {
+            return aiPersistenceService.save(caseId, type, prompt, resultText, confidence);
+        } catch (Exception e) {
+            log.error("[AI] 분석 결과 저장 실패 (type={}, caseId={}): {}", type, caseId, e.getMessage(), e);
+            return null;
+        }
+    }
+
+    private String buildSummaryText(SummaryDto d) {
+        StringBuilder sb = new StringBuilder(nz(d.getSummary()));
+        if (d.getMainIssues() != null && !d.getMainIssues().isEmpty()) {
+            sb.append("\n[주요 쟁점] ").append(String.join("; ", d.getMainIssues()));
+        }
+        if (d.getTimeline() != null && !d.getTimeline().isBlank()) {
+            sb.append("\n[타임라인] ").append(d.getTimeline());
+        }
+        return sb.toString();
+    }
+
+    private String buildPrecedentText(List<PrecedentDto> list) {
+        if (list.isEmpty()) {
+            return "유사 판례 없음";
+        }
+        StringBuilder sb = new StringBuilder("유사 판례 " + list.size() + "건: ");
+        for (PrecedentDto p : list) {
+            sb.append(p.getTitle()).append("(")
+              .append(String.format("%.3f", p.getSimilarityScore())).append("), ");
+        }
+        return sb.substring(0, sb.length() - 2);
+    }
+
+    private String nz(String s) {
+        return s == null ? "" : s;
     }
 }
