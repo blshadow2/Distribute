@@ -29,7 +29,7 @@ import lawSystem.web.service.LawyerService;
 /**
  * AI 기능 REST 컨트롤러 (첫 수직 슬라이스: 사건 요약).
  *
- *   POST /api/ai/summary        — 텍스트 요약 후 저장 (AIAnalysisService 재사용)
+ *   POST /api/ai/summary        — 텍스트 요약 후 JPA 저장 (AiWebService → AiPersistenceService)
  *   GET  /api/ai/results/{id}   — 저장된 결과 조회 (Spring Data JPA)
  */
 @RestController

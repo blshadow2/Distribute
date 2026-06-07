@@ -9,9 +9,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 import lawSystem.ai.AnalysisType;
-import lawSystem.ai.PrecedentAnalysisResult;
-import lawSystem.ai.SimilarPrecedentsAnalysis;
+import lawSystem.jpa.entity.Precedent;
 import lawSystem.precedent.LegalRulesDto;
+import lawSystem.precedent.PrecedentHit;
 import lawSystem.precedent.PrecedentRagClient;
 import lawSystem.precedent.SummaryDto;
 import lawSystem.web.dto.AiResultResponse;
@@ -20,6 +20,7 @@ import lawSystem.web.dto.LegalRulesResponse;
 import lawSystem.web.dto.PrecedentDto;
 import lawSystem.web.dto.SummaryResponse;
 import lawSystem.web.repository.AiResultRepository;
+import lawSystem.web.repository.PrecedentRepository;
 
 /**
  * AI 기능 웹 서비스.
@@ -35,12 +36,15 @@ public class AiWebService {
 
     private final AiResultRepository aiResultRepository;
     private final AiPersistenceService aiPersistenceService;
+    private final PrecedentRepository precedentRepository;
     private final PrecedentRagClient ragClient = new PrecedentRagClient();
 
     public AiWebService(AiResultRepository aiResultRepository,
-                        AiPersistenceService aiPersistenceService) {
+                        AiPersistenceService aiPersistenceService,
+                        PrecedentRepository precedentRepository) {
         this.aiResultRepository = aiResultRepository;
         this.aiPersistenceService = aiPersistenceService;
+        this.precedentRepository = precedentRepository;
     }
 
     /** 사건 내용 요약 → RAG/LLM 호출 후 JPA 로 저장(항상). */
@@ -76,18 +80,25 @@ public class AiWebService {
                 "키워드: " + String.join(", ", keywords), 0.9);
     }
 
-    /** 유사 판례 목록 (검색 → DB 본문 조립) + 결과 저장. */
+    /**
+     * 유사 판례 목록: RAG 검색(식별자+점수) → JPA(PrecedentRepository)로 본문 조립 + 결과 저장.
+     * (기존 JDBC PrecedentDAO 경로를 제거하고 JPA 로 일원화)
+     */
     public List<PrecedentDto> similarPrecedents(String query, String caseId) {
         List<PrecedentDto> out = new ArrayList<>();
-        List<PrecedentAnalysisResult> results =
-                new SimilarPrecedentsAnalysis().searchSimilarPrecedents(caseId, query);
-        for (PrecedentAnalysisResult r : results) {
-            out.add(new PrecedentDto(
-                    r.getPrecedentId(),
-                    r.getPrecedentTitle(),
-                    r.getSimilarityScore(),
-                    r.getLegalIssue(),
-                    r.getPrecedentSummary()));
+        try {
+            List<PrecedentHit> hits = ragClient.searchSimilarPrecedents(query, caseId, 5, 0.0);
+            for (PrecedentHit hit : hits) {
+                precedentRepository.findByExternalCaseId(hit.getCaseId()).ifPresent(p ->
+                        out.add(new PrecedentDto(
+                                p.getPrecedentId(),
+                                p.getCaseName(),
+                                hit.getSimilarityScore(),
+                                trim(p.getIssues(), 1000),
+                                pickSummary(p))));
+            }
+        } catch (Exception e) {
+            log.warn("[AI] 유사 판례 검색 실패: {}", e.getMessage());
         }
         persist(caseId, AnalysisType.SIMILAR_PRECEDENTS, query, buildPrecedentText(out), 0.8);
         return out;
@@ -164,5 +175,18 @@ public class AiWebService {
 
     private String nz(String s) {
         return s == null ? "" : s;
+    }
+
+    private String pickSummary(Precedent p) {
+        String s = p.getSummary();
+        return (s != null && !s.isBlank()) ? trim(s, 1000) : trim(p.getIssues(), 1000);
+    }
+
+    private String trim(String text, int max) {
+        if (text == null) {
+            return null;
+        }
+        String t = text.trim();
+        return t.length() <= max ? t : t.substring(0, max) + "...";
     }
 }
