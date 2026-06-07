@@ -116,6 +116,25 @@ public class ConsultationService {
         });
     }
 
+    /** 사무직원: 상담 완료 처리(승인된 상담만). 완료되어야 의뢰인이 수임을 요청할 수 있다. */
+    @Transactional
+    public void complete(String requestId) {
+        requestRepository.findById(requestId).ifPresent(r -> {
+            if (r.getRequestStatus() == ConsultationStatus.APPROVED) {
+                r.setRequestStatus(ConsultationStatus.COMPLETED);
+            }
+        });
+    }
+
+    /** 의뢰인이 상담을 완료한 변호사들의 member_id 집합 (수임 요청 가능 대상). */
+    @Transactional(readOnly = true)
+    public java.util.Set<String> completedConsultationLawyerIds(String clientId) {
+        return requestRepository.findByClient_MemberIdOrderByRequestedAtDesc(clientId).stream()
+                .filter(r -> r.getRequestStatus() == ConsultationStatus.COMPLETED && r.getLawyer() != null)
+                .map(r -> r.getLawyer().getMemberId())
+                .collect(java.util.stream.Collectors.toSet());
+    }
+
     /** 의뢰인 본인의 거절/취소된 상담 신청만 삭제한다. */
     @Transactional
     public void deleteByClient(String requestId, String clientId) {

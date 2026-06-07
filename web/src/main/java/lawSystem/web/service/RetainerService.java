@@ -15,11 +15,13 @@ import lawSystem.jpa.entity.Lawyer;
 import lawSystem.jpa.entity.Member;
 import lawSystem.jpa.entity.RetainerCondition;
 import lawSystem.jpa.entity.RetainerRequest;
+import lawSystem.consultation.ConsultationStatus;
 import lawSystem.legalCase.CaseStatus;
 import lawSystem.retainer.ConditionStatus;
 import lawSystem.retainer.RetainerStatus;
 import lawSystem.web.dto.RetainerDto;
 import lawSystem.web.repository.CaseRepository;
+import lawSystem.web.repository.ConsultationRequestRepository;
 import lawSystem.web.repository.LawyerRepository;
 import lawSystem.web.repository.MemberRepository;
 import lawSystem.web.repository.RetainerRequestRepository;
@@ -36,15 +38,18 @@ public class RetainerService {
     private final MemberRepository memberRepository;
     private final CaseRepository caseRepository;
     private final LawyerRepository lawyerRepository;
+    private final ConsultationRequestRepository consultationRequestRepository;
 
     public RetainerService(RetainerRequestRepository requestRepository,
                            MemberRepository memberRepository,
                            CaseRepository caseRepository,
-                           LawyerRepository lawyerRepository) {
+                           LawyerRepository lawyerRepository,
+                           ConsultationRequestRepository consultationRequestRepository) {
         this.requestRepository = requestRepository;
         this.memberRepository = memberRepository;
         this.caseRepository = caseRepository;
         this.lawyerRepository = lawyerRepository;
+        this.consultationRequestRepository = consultationRequestRepository;
     }
 
     @Transactional
@@ -56,6 +61,14 @@ public class RetainerService {
                 .orElseThrow(() -> new IllegalArgumentException("사건을 선택하세요."));
         Lawyer lawyer = lawyerRepository.findById(lawyerId)
                 .orElseThrow(() -> new IllegalArgumentException("변호사를 선택하세요."));
+
+        // 유스케이스: 상담이 완료되어야 수임이 가능하다.
+        boolean consultationDone = consultationRequestRepository
+                .existsByClient_MemberIdAndLawyer_MemberIdAndRequestStatus(
+                        clientId, lawyerId, ConsultationStatus.COMPLETED);
+        if (!consultationDone) {
+            throw new IllegalStateException("상담이 완료된 변호사에게만 수임을 요청할 수 있습니다.");
+        }
 
         RetainerRequest req = new RetainerRequest(
                 "ret-" + UUID.randomUUID().toString().substring(0, 8),

@@ -105,4 +105,11 @@ public class ConsultationController {
         consultationService.reject(id);
         return "redirect:/schedules";
     }
+
+    @RoleAllowed("STAFF")
+    @PostMapping("/consultations/{id}/complete")
+    public String complete(@PathVariable("id") String id) {
+        consultationService.complete(id);
+        return "redirect:/schedules";
+    }
 }

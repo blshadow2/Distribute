@@ -63,12 +63,19 @@
                 <td th:text="${r.scheduleTime}">일정</td>
                 <td><span class="badge" th:text="${r.status}">상태</span></td>
                 <td>
-                    <form th:action="@{/consultations/{id}/approve(id=${r.id})}" method="post" style="display:inline;">
+                    <!-- 신청됨: 승인 / 거절 -->
+                    <form th:if="${r.status == 'REQUESTED'}" th:action="@{/consultations/{id}/approve(id=${r.id})}" method="post" style="display:inline;">
                         <button class="btn btn-pill-outline" type="submit">승인</button>
                     </form>
-                    <form th:action="@{/consultations/{id}/reject(id=${r.id})}" method="post" style="display:inline;">
+                    <form th:if="${r.status == 'REQUESTED'}" th:action="@{/consultations/{id}/reject(id=${r.id})}" method="post" style="display:inline;">
                         <button class="btn btn-pill-outline" type="submit">거절</button>
                     </form>
+                    <!-- 승인됨: 상담 완료 처리(수임 전제조건) -->
+                    <form th:if="${r.status == 'APPROVED'}" th:action="@{/consultations/{id}/complete(id=${r.id})}" method="post" style="display:inline;">
+                        <button class="btn btn-primary" type="submit">상담 완료</button>
+                    </form>
+                    <span th:if="${r.status == 'COMPLETED'}" class="small muted">✔ 완료(수임 가능)</span>
+                    <span th:if="${r.status == 'REJECTED'}" class="small muted">거절됨</span>
                 </td>
             </tr>
             </tbody>

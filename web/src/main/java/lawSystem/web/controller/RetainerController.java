@@ -1,5 +1,7 @@
 package lawSystem.web.controller;
 
+import java.util.List;
+
 import jakarta.servlet.http.HttpSession;
 
 import org.springframework.stereotype.Controller;
@@ -8,11 +10,14 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import lawSystem.web.auth.LoginMember;
 import lawSystem.web.auth.RoleAllowed;
 import lawSystem.web.auth.SessionConst;
+import lawSystem.web.dto.LawyerDto;
 import lawSystem.web.service.CaseService;
+import lawSystem.web.service.ConsultationService;
 import lawSystem.web.service.LawyerService;
 import lawSystem.web.service.RetainerService;
 
@@ -25,13 +30,16 @@ public class RetainerController {
     private final RetainerService retainerService;
     private final CaseService caseService;
     private final LawyerService lawyerService;
+    private final ConsultationService consultationService;
 
     public RetainerController(RetainerService retainerService,
                              CaseService caseService,
-                             LawyerService lawyerService) {
+                             LawyerService lawyerService,
+                             ConsultationService consultationService) {
         this.retainerService = retainerService;
         this.caseService = caseService;
         this.lawyerService = lawyerService;
+        this.consultationService = consultationService;
     }
 
     private LoginMember login(HttpSession session) {
@@ -45,7 +53,12 @@ public class RetainerController {
         LoginMember m = login(session);
         model.addAttribute("requests", retainerService.listForClient(m.getMemberId()));
         model.addAttribute("cases", caseService.listForUser(m.getMemberId(), "CLIENT"));
-        model.addAttribute("lawyers", lawyerService.search(null, null, null));
+        // 유스케이스: 상담이 완료된 변호사에게만 수임 요청 가능 → 드롭다운을 그들로 제한.
+        java.util.Set<String> eligible = consultationService.completedConsultationLawyerIds(m.getMemberId());
+        List<LawyerDto> lawyers = lawyerService.search(null, null, null).stream()
+                .filter(l -> eligible.contains(l.getLawyerId()))
+                .toList();
+        model.addAttribute("lawyers", lawyers);
         return "retainers";
     }
 
@@ -57,9 +70,14 @@ public class RetainerController {
                           @RequestParam(value = "desiredFee", required = false, defaultValue = "0") int fee,
                           @RequestParam(value = "desiredResult", required = false) String result,
                           @RequestParam(value = "requestContent", required = false) String content,
-                          HttpSession session) {
+                          RedirectAttributes ra, HttpSession session) {
         LoginMember m = login(session);
-        retainerService.requestRetainer(m.getMemberId(), caseId, lawyerId, scope, fee, result, content);
+        try {
+            retainerService.requestRetainer(m.getMemberId(), caseId, lawyerId, scope, fee, result, content);
+        } catch (RuntimeException e) {
+            // 상담 미완료 등 전제조건 위반 → 화면에 안내
+            ra.addFlashAttribute("error", e.getMessage());
+        }
         return "redirect:/retainers";
     }
 
