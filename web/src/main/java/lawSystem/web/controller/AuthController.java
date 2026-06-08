@@ -28,7 +28,11 @@ public class AuthController {
     }
 
     @GetMapping("/login")
-    public String loginForm() {
+    public String loginForm(HttpSession session) {
+        // 이미 로그인되어 있으면 로그인 폼 대신 대시보드로 보낸다.
+        if (session.getAttribute(SessionConst.LOGIN_MEMBER) != null) {
+            return "redirect:/";
+        }
         return "login";
     }
 
