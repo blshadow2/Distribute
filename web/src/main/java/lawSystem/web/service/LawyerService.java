@@ -57,6 +57,7 @@ public class LawyerService {
         // 3) 키워드가 있으면 의미 기반 유사도로 정렬(점수 높은 순, 동점 시 업무량 적은 순).
         Map<String, Double> scores = semanticScores(kw, candidates);
         if (scores != null && !scores.isEmpty()) {
+            candidates.forEach(d -> d.setMatchScore(scores.get(d.getLawyerId())));   // 화면 노출용 점수
             return candidates.stream()
                     .sorted(Comparator
                             .comparingDouble((LawyerDto d) -> scores.getOrDefault(d.getLawyerId(), -1.0))

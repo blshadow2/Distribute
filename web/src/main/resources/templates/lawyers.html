@@ -50,9 +50,11 @@
 
     <div class="menu-grid" th:unless="${#lists.isEmpty(lawyers)}">
         <div class="card" th:each="l : ${lawyers}">
-            <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap;">
                 <span class="card-title" style="margin:0;" th:text="${l.name}">이름</span>
                 <span class="badge" th:text="${l.type}">유형</span>
+                <span class="badge" th:if="${l.matchScore != null}"
+                      th:text="'유사도 ' + ${#numbers.formatDecimal(l.matchScore, 1, 2)}">유사도 0.00</span>
             </div>
             <div style="margin:6px 0;">
                 <span class="tag" th:each="s : ${l.specialties}" th:text="${s}">분야</span>
