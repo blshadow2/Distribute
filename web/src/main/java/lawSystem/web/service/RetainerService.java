@@ -171,6 +171,16 @@ public class RetainerService {
         });
     }
 
+    /** 대표변호사: 거절된 수임 요청 삭제(수임 관리 화면 정리용, 조건은 cascade 로 함께 삭제). */
+    @Transactional
+    public void deleteByPartner(String requestId) {
+        requestRepository.findById(requestId).ifPresent(req -> {
+            if (req.getRequestStatus() == RetainerStatus.REJECTED) {
+                requestRepository.delete(req);
+            }
+        });
+    }
+
     private Optional<RetainerCondition> latestCondition(RetainerRequest req) {
         return req.getConditions().stream().max(Comparator.comparing(RetainerCondition::getCreatedAt));
     }

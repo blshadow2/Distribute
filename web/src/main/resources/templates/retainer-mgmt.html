@@ -61,7 +61,12 @@
             </form>
         </div>
         <p class="small muted" th:if="${r.status == 'RETAINED'}" style="margin-top:8px;">✔ 수임 완료 (사건 상태: 수임).</p>
-        <p class="small muted" th:if="${r.status == 'REJECTED'}" style="margin-top:8px;">✘ 거절된 요청입니다.</p>
+        <div th:if="${r.status == 'REJECTED'}" style="margin-top:8px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+            <span class="small muted">✘ 거절된 요청입니다.</span>
+            <form th:action="@{/retainers/{id}/remove(id=${r.id})}" method="post" style="display:inline;">
+                <button class="btn btn-pill-outline" type="submit">신청 삭제</button>
+            </form>
+        </div>
     </div>
 </div>
 </body>

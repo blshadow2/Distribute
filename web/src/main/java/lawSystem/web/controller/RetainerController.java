@@ -141,4 +141,11 @@ public class RetainerController {
         retainerService.rejectByPartner(id);
         return "redirect:/retainer-mgmt";
     }
+
+    @RoleAllowed("PARTNER")
+    @PostMapping("/retainers/{id}/remove")
+    public String remove(@PathVariable("id") String id) {
+        retainerService.deleteByPartner(id);
+        return "redirect:/retainer-mgmt";
+    }
 }
