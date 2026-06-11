@@ -28,6 +28,58 @@ law-platform/
 세 구성요소는 환경변수 **`LAWSYSTEM_DB_URL`** 로 같은 DB를 공유한다.
 
 ---
+## 클래스 설계의 Entity 반영 (설계 ↔ 구현 대응)
+
+중간레포트 **클래스 다이어그램(4장)** 의 도메인 클래스는 모두 JPA `@Entity`(`lawSystem.jpa.entity` 패키지)로 구현되어, Hibernate가 `law_system_jpa` 스키마로 매핑한다. 즉 설계의 클래스·속성·관계가 코드의 엔티티에 1:1로 반영되어 있다.
+
+### 1. 상속 구조 (Generalization → JPA JOINED 상속)
+```
+Member (추상, @Inheritance(strategy = JOINED), PK member_id)
+ ├─ Client
+ ├─ Lawyer (추상)
+ │    ├─ PartnerLawyer
+ │    └─ AssociateLawyer
+ └─ Staff
+```
+- 클래스 다이어그램의 "Lawyer/Client/Staff → Member", "Partner/Associate → Lawyer" 일반화 관계를 **JOINED 상속**으로 구현(서브타입이 `member_id`를 공유 PK로 사용).
+
+### 2. 설계 클래스 → Entity 매핑
+
+| 설계 클래스(클래스 다이어그램) | JPA Entity | 테이블 | 반영 비고 |
+|---|---|---|---|
+| Member / Client / Lawyer / PartnerLawyer / AssociateLawyer / Staff | 동일명 Entity | member·client·lawyer·partner_lawyer·associate_lawyer·staff | JOINED 상속, `specialty`는 `@ElementCollection` |
+| **Case** | **LegalCase** | legal_case | SQL 예약어 `case` 충돌 회피로 개명. client·assignedLawyer를 `@ManyToOne` FK로 |
+| CaseInfo | CaseInfo | case_info | 사건 입력 정보 |
+| Evidence | Evidence | evidence | LegalCase 1:N |
+| CaseDocument | CaseDocument | case_document | LegalCase 1:N |
+| SimilarPrecedent | SimilarPrecedent | similar_precedent | LegalCase 1:N |
+| ProgressionRecord | ProgressionRecord | progression_record | LegalCase 1:N |
+| ConsultationRequest | ConsultationRequest | consultation_request | client·lawyer·schedule FK, `ConsultationStatus` |
+| ConsultationSchedule | ConsultationSchedule | consultation_schedule | lawyer FK, `ScheduleStatus` |
+| RetainerRequest | RetainerRequest | retainer_request | RetainerCondition 1:N, `RetainerStatus` |
+| RetainerCondition | RetainerCondition | retainer_condition | `ConditionStatus` |
+| VerificationResult | VerificationResult | verification_result | 본인인증 결과 |
+| ElectronicSignature | ElectronicSignature | electronic_signature | 전자서명 |
+| AIAnalysisRequest | AIAnalysisRequest | ai_analysis_request | requester(Member) FK, `AnalysisType`·`AIRequestStatus` |
+| AIAnalysisResult | AIAnalysisResult | ai_analysis_result | request FK + case_id FK |
+| AIAnalysisFunction | AIAnalysisFunction | ai_analysis_function | AI 기능 메타 |
+| Precedent (판례 원본) | Precedent | precedent | `external_case_id` UNIQUE — RAG 검색의 역참조 키 |
+
+### 3. 관계(Association·Aggregation) → JPA 매핑
+- **Association** (예: Client/Lawyer → RetainerRequest, RetainerRequest → Case, Member → AIAnalysisRequest, Staff → ConsultationRequest/Schedule) → `@ManyToOne` + `@JoinColumn`.
+- **Aggregation** (Case의 구성요소: Evidence·CaseDocument·ProgressionRecord·SimilarPrecedent) → `@OneToMany(mappedBy=…, cascade=ALL, orphanRemoval=true)`.
+- **요청–결과 종속**(AIAnalysisResult는 AIAnalysisRequest의 일부) → `ai_analysis_result.ai_request_id` NOT NULL FK.
+
+### 4. enum 반영
+설계의 상태/유형 enum이 그대로 구현되어 `@Enumerated(EnumType.STRING)`으로 저장된다:
+`MemberRole`·`CaseCategory`·`CaseStatus`·`ConsultationStatus`·`ScheduleStatus`·`RetainerStatus`·`ConditionStatus`·`AnalysisType`·`AIRequestStatus`.
+
+### 5. 비고 — AI 기능/결과 계층의 위치
+클래스 다이어그램의 AI **기능 클래스**(`CaseSummary`·`SimilarPrecedentsAnalysis`·`LegalRuleAnalysis`·`CaseKeywordsExtract`·`DocumentDraft`·`RecommendLawyers`)와 **결과 타입**(`CaseAnalysisReport`·`LegalRuleAnalysisResult`·`PrecedentAnalysisResult` 등)은 데이터가 아닌 **동작/계산 클래스**이므로, 영속 엔티티가 아니라 도메인 패키지(`lawSystem.ai`)의 클래스로 구현했다. 영속화가 필요한 요청·결과는 `AIAnalysisRequest`/`AIAnalysisResult` **엔티티로 일반화**하여 저장한다.
+
+> 요약: 설계 클래스 다이어그램의 **도메인 클래스 = JPA 엔티티**, **상속 = JOINED**, **관계 = @ManyToOne/@OneToMany**, **상태값 = enum** 으로 빠짐없이 반영되었으며, 유일한 변경은 SQL 예약어 회피를 위한 `Case → LegalCase` 개명이다.
+
+---
 
 ## 🛠️ 기술 스택
 
